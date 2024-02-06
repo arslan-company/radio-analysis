@@ -1,14 +1,8 @@
-import os
-import sys
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import requests
-from dotenv import load_dotenv
-
-from dataclasses import dataclass
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
-load_dotenv()
+import streamlit as st
 
 
 @dataclass
@@ -29,8 +23,8 @@ class Music:
     played_duration: int
 
 
-TOKEN = os.getenv("TOKEN")
-PROJECT_ID = os.getenv("PROJECT_ID")
+TOKEN = st.secrets("TOKEN")
+PROJECT_ID = st.secrets("PROJECT_ID")
 
 
 def get_channels() -> List[Channel]:
