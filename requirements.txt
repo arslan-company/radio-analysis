@@ -1,5 +1,2 @@
-streamlit==1.22.0
-llama-index
-transformers
-PyPDF2
-docx2txt
+streamlit
+python-dotenv

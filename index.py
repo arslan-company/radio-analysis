@@ -1,29 +1,81 @@
-import os
+from dataclasses import dataclass
+
 import streamlit as st
 
-from llama_index import StorageContext, load_index_from_storage
+from acr_cloud import broadcast_database
 
-# Uncomment to specify your OpenAI API key here (local testing only, not in production!), or add corresponding environment variable (recommended)
-# os.environ['OPENAI_API_KEY'] = "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"
 
-# rebuild storage context
-storage_context = StorageContext.from_defaults(persist_dir="./storage")
-# load index
-index = load_index_from_storage(storage_context)
+@dataclass
+class Response:
+    timestamp: str
+    duration: str
+    title: str
+    artist: str
+    is_local: bool
 
-# Define a simple Streamlit app
-st.title("Akıllı bıdığa sor")
-query = st.text_area("Bana bu gün ne sormak istersin?", "")
-query_engine = index.as_query_engine()
 
-if st.button("Submit"):
-    if not query.strip():
-        st.error(f"Please provide the search query.")
+def prettier_duration(duration: int) -> str:
+    minutes = duration // 60
+    seconds = duration % 60
+    text = ""
+    if minutes > 0:
+        text += f"{minutes} dakika "
+    if seconds > 0:
+        text += f"{seconds} saniye"
+    return text.strip()
+
+
+st.title("Şarkı - Sanatçı Radyo Sayacı")
+title_query = st.text_area("Şarkı adı", "")
+artist_query = st.text_area("Sanatçı adı", "")
+
+if st.button("Ara"):
+    if not title_query.strip() and not artist_query.strip():
+        st.error("Lütfen bir değer girin.")
     else:
         try:
-            response = query_engine.query(query)
-            st.write("Sorgu: ", query)
-            st.write("Cevap: ", response)
+            channels = broadcast_database.get_channels()
+            responses = {}
+            for channel in channels:
+                musics = broadcast_database.get_musics(channel.id)
+                founds = broadcast_database.search_musics(
+                    channel, musics, title_query, artist_query
+                )
+                for found in founds:
+                    if channel.name not in responses:
+                        responses[channel.name] = []
+                    responses[channel.name].append(
+                        Response(
+                            found.timestamp,
+                            prettier_duration(found.played_duration),
+                            found.title,
+                            ", ".join([artist for artist in found.artists]),
+                            channel.is_local(),
+                        )
+                    )
+
+            st.write("Şarkı adı için sorgu: ", title_query)
+            st.write("Sanatçı adı için sorgu: ", artist_query)
+            local_score = 0
+            global_score = 0
+            for channel, responses in responses.items():
+                is_local = responses[0].is_local
+                if is_local:
+                    local_score += len(responses)
+                else:
+                    global_score += len(responses)
+                st.write(f"Radyo: {channel} {'(Yerel)' if is_local else ''}")
+                for response in responses:
+                    st.markdown(
+                        (
+                            f"- {response.timestamp} tarihinde {response.duration} "
+                            f"süresince {response.artist} sanatçısının "
+                            f"{response.title} şarkısı çalınmıştır.\n"
+                        )
+                    )
+            st.write(
+                "Bu sonuçlara göre analiz sonucumuz: "
+                f"{local_score + (global_score * 81)}"
+            )
         except Exception as e:
             st.error(f"An error occurred: {e}")
-
