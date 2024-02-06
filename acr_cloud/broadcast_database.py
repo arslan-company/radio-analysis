@@ -23,8 +23,8 @@ class Music:
     played_duration: int
 
 
-TOKEN = st.secrets("TOKEN")
-PROJECT_ID = st.secrets("PROJECT_ID")
+TOKEN = st.secrets["TOKEN"]
+PROJECT_ID = st.secrets["PROJECT_ID"]
 
 
 def get_channels() -> List[Channel]:
